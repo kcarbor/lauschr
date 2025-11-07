@@ -59,4 +59,7 @@ jobs:
               ./public $REMOTE;
             bye
           "
-
+      - name: Debug: list local files
+        run: |
+          echo "Local files in ./public:"
+          find public -type f
