@@ -1,4 +1,4 @@
-name: Deploy to Manitu (FTPS)
+name: Deploy to Manitu (FTPS, no marketplace)
 
 on:
   push:
@@ -15,31 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # .htpasswd während des Deploys erzeugen (nicht im Repo!)
-      - name: Create .htpasswd from secret
+      - name: Create .htaccess from secret
         run: |
           mkdir -p public
-          printf "%s\n" "${{ secrets.HTPASSWD_LINE }}" > public/.htpasswd
-
-      # FTPS-Upload (nur Änderungen), 'data/' bleibt unberührt
-      - name: Upload via FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server: ${{ secrets.MANITU_HOST }}
-          username: ${{ secrets.MANITU_USER }}
-          password: ${{ secrets.MANITU_PASS }}
-          protocol: ftps
-          local-dir: public/
-          server-dir: ${{ secrets.MANITU_PATH }}/
-          state-name: .ftp-deploy-sync-state.json
-          exclude: |
-            **/.git*
-            **/.github/**
-            **/node_modules/**
-            public/data/**
-
-      - name: Create .htaccess
-        run: |
           cat > public/.htaccess <<'EOF'
           AuthType Basic
           AuthName "LauschR Admin Upload"
@@ -47,3 +25,31 @@ jobs:
           Require valid-user
           Options -Indexes
           EOF
+
+      - name: Create .htpasswd from secret
+        run: |
+          printf "%s\n" "${{ secrets.HTPASSWD_LINE }}" > public/.htpasswd
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Mirror via FTPS (preserve data/)
+        env:
+          HOST: ${{ secrets.MANITU_HOST }}
+          USER: ${{ secrets.MANITU_USER }}
+          PASS: ${{ secrets.MANITU_PASS }}
+          REMOTE: ${{ secrets.MANITU_PATH }}
+        run: |
+          lftp -u "$USER","$PASS" ftps://$HOST -e "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 2;
+            set net:timeout 20;
+            mirror -R --only-newer --parallel=4 \
+              --exclude-glob .git* \
+              --exclude-glob .github/** \
+              --exclude-glob node_modules/** \
+              --exclude-glob data/** \
+              ./public $REMOTE;
+            bye
+          "
