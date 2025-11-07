@@ -1,4 +1,4 @@
-name: Deploy to Manitu (SFTP, Port 23)
+name: Deploy to Manitu (FTPS explicit)
 
 on:
   push:
@@ -15,6 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # .htaccess & .htpasswd lokal erzeugen (kommen mit hoch)
       - name: Create .htaccess from secret
         run: |
           mkdir -p public
@@ -30,29 +31,31 @@ jobs:
         run: |
           printf "%s\n" "${{ secrets.HTPASSWD_LINE }}" > public/.htpasswd
 
-      - name: Setup SSH (Port 23)
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          # Hostkey laden (Port 23!)
-          ssh-keyscan -p 23 -H "${{ secrets.MANITU_HOST }}" >> ~/.ssh/known_hosts
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Ensure remote directory exists
+      - name: Mirror via FTPS (explicit TLS on 21, keep data/)
         env:
           HOST: ${{ secrets.MANITU_HOST }}
           USER: ${{ secrets.MANITU_USER }}
+          PASS: ${{ secrets.MANITU_PASS }}
           REMOTE: ${{ secrets.MANITU_PATH }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 -p 23 -o StrictHostKeyChecking=yes "$USER@$HOST" "mkdir -p '$REMOTE'"
-
-      - name: Sync via SFTP (preserve data/)
-        env:
-          HOST: ${{ secrets.MANITU_HOST }}
-          USER: ${{ secrets.MANITU_USER }}
-          REMOTE: ${{ secrets.MANITU_PATH }}
-        run: |
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/id_ed25519 -p 23 -o StrictHostKeyChecking=yes" \
-            --exclude 'data/' --exclude '.git*' --exclude '.github/' --exclude 'node_modules/' \
-            public/ "$USER@$HOST:$REMOTE/"
+          lftp -u "$USER","$PASS" -e "
+            set ftp:passive-mode true;
+            set ftp:use-feat true;
+            set ftp:ssl-auth TLS;
+            set ftp:ssl-force true;          # erzwingt explizites TLS
+            set ftp:ssl-protect-data true;   # Datenkanal verschlüsseln
+            set net:max-retries 2;
+            set net:timeout 25;
+            # Wenn Zertifikat meckert, TEMPORÄR entsperren (danach wieder rausnehmen!):
+            # set ssl:verify-certificate false;
+            mirror -R --only-newer --parallel=2 \
+              --exclude-glob .git* \
+              --exclude-glob .github/** \
+              --exclude-glob node_modules/** \
+              --exclude-glob data/** \
+              ./public $REMOTE;
+            bye
+          " ftp://$HOST:21
