@@ -1,7 +1,6 @@
 AuthType Basic
 AuthName "LauschR Admin Upload"
-# >>> diesen Pfad gleich anpassen (absoluter Serverpfad!)
-AuthUserFile /home/sites/site10011578/web/lauschr.de/raime-upload/.htpasswd
+AuthUserFile /home/sites/site10011578/web/lauschr.de/public/.htpasswd
 Require valid-user
 
 Options -Indexes
