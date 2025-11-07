@@ -1,0 +1,8 @@
+# local stuff
+public/data/
+public/.htpasswd
+
+# GitHub, actions, apple cache
+.github/
+node_modules/
+.DS_Store
