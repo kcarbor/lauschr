@@ -37,3 +37,13 @@ jobs:
             **/.github/**
             **/node_modules/**
             public/data/**
+
+      - name: Create .htaccess
+        run: |
+          cat > public/.htaccess <<'EOF'
+          AuthType Basic
+          AuthName "LauschR Admin Upload"
+          AuthUserFile ${{ secrets.MANITU_HTPASSWD_PATH }}
+          Require valid-user
+          Options -Indexes
+          EOF
