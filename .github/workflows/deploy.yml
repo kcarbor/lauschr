@@ -1,0 +1,39 @@
+name: Deploy to Manitu (FTPS)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'public/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # .htpasswd während des Deploys erzeugen (nicht im Repo!)
+      - name: Create .htpasswd from secret
+        run: |
+          mkdir -p public
+          printf "%s\n" "${{ secrets.HTPASSWD_LINE }}" > public/.htpasswd
+
+      # FTPS-Upload (nur Änderungen), 'data/' bleibt unberührt
+      - name: Upload via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.MANITU_HOST }}
+          username: ${{ secrets.MANITU_USER }}
+          password: ${{ secrets.MANITU_PASS }}
+          protocol: ftps
+          local-dir: public/
+          server-dir: ${{ secrets.MANITU_PATH }}/
+          state-name: .ftp-deploy-sync-state.json
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/node_modules/**
+            public/data/**
