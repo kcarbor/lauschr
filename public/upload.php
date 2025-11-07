@@ -23,7 +23,7 @@ $FEED_AUTHOR  = 'Kevin Baum';
 $FEED_OWNER   = ['name' => 'Kevin Baum', 'email' => 'mail@kevinbaum.de'];
 
 // **Logo für Podcatcher** (möglichst quadratisch ≥1400x1400, PNG/JPG):
-$FEED_IMAGE_URL = 'https://lauschr.de/raime-upload/public/logo.png';
+$FEED_IMAGE_URL = 'https://lauschr.de/raime-upload/logo.png';
 
 // Maximale Upload-Größe (Server muss das auch erlauben: post_max_size, upload_max_filesize)
 $MAX_BYTES = 200 * 1024 * 1024; // 200 MB
