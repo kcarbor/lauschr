@@ -41,15 +41,15 @@ jobs:
           PASS: ${{ secrets.MANITU_PASS }}
           REMOTE: ${{ secrets.MANITU_PATH }}
         run: |
-          lftp -u "$USER","$PASS" -e "
+          lftp -u "$USER","$PASS" "ftp://$HOST:21" -e "
             set ftp:passive-mode true;
             set ftp:use-feat true;
             set ftp:ssl-auth TLS;
-            set ftp:ssl-force true;          # erzwingt explizites TLS
-            set ftp:ssl-protect-data true;   # Datenkanal verschlüsseln
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
             set net:max-retries 2;
             set net:timeout 25;
-            # Wenn Zertifikat meckert, TEMPORÄR entsperren (danach wieder rausnehmen!):
+            # Falls Zertifikat zickt -> zum Testen aktivieren (später wieder löschen!):
             # set ssl:verify-certificate false;
             mirror -R --only-newer --parallel=2 \
               --exclude-glob .git* \
@@ -58,4 +58,5 @@ jobs:
               --exclude-glob data/** \
               ./public $REMOTE;
             bye
-          " ftp://$HOST:21
+          "
+
