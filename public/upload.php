@@ -109,7 +109,7 @@ function build_index(array $episodes, string $outPath, string $title, string $fe
   .epi small{color:#666}
 </style>
 <header>
-  <img src="<?= h(str_replace('podcasts.xml','logo.png',$feedUrl)) ?>" alt="Logo">
+  <img src="<?= h(str_replace('podcasts.xml','../logo.png',$feedUrl)) ?>" alt="Logo">
   <div>
     <h1><?= h($title) ?></h1>
     <p><a href="<?= h($feedUrl) ?>">RSS/Podcast-Feed</a></p>
