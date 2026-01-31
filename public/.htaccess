@@ -1,6 +1,74 @@
-AuthType Basic
-AuthName "LauschR Admin Upload"
-AuthUserFile /home/sites/site10011578/web/lauschr.de/public/.htpasswd
-Require valid-user
+# LauschR - Apache Configuration
+# ================================
 
+# Enable rewrite engine
+RewriteEngine On
+
+# Set base path (change if installed in subdirectory)
+# RewriteBase /
+
+# HTTPS redirect (uncomment in production)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Handle Authorization Header
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Redirect Trailing Slashes (except for root)
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} (.+)/$
+RewriteRule ^ %1 [L,R=301]
+
+# Handle Front Controller
+# Don't rewrite if requesting existing file or directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# Protect sensitive files
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Disable directory browsing
 Options -Indexes
+
+# Set default charset
+AddDefaultCharset UTF-8
+
+# Enable compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json application/xml application/rss+xml
+</IfModule>
+
+# Cache static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType audio/mpeg "access plus 1 week"
+    ExpiresByType audio/mp4 "access plus 1 week"
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# PHP settings (if not using .user.ini)
+<IfModule mod_php.c>
+    php_value upload_max_filesize 200M
+    php_value post_max_size 220M
+    php_value max_file_uploads 20
+    php_value memory_limit 512M
+    php_value max_execution_time 120
+</IfModule>

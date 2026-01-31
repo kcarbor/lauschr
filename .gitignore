@@ -1,8 +1,36 @@
-# local stuff
+# Data directory (user data, audio files)
+data/
 public/data/
-public/.htpasswd
 
-# GitHub, actions, apple cache
-.github/
-node_modules/
+# Auth files
+public/.htpasswd
+.htpasswd
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts
+*.cache
+
+# Temporary files
+tmp/
+temp/
