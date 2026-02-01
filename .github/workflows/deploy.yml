@@ -40,10 +40,8 @@ jobs:
               --exclude-glob public/debug.php \
               --exclude-glob router.php \
               --exclude-glob data/users.json \
-              --exclude-glob data/feeds/ \
-              --exclude-glob data/feeds/** \
-              --exclude-glob data/audio/ \
-              --exclude-glob data/audio/** \
+              --exclude-glob data/feeds/*.json \
+              --exclude-glob data/audio/*/* \
               --exclude-glob data/images/*.jpg \
               --exclude-glob data/images/*.png \
               --exclude-glob data/images/*.webp \
