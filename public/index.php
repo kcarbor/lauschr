@@ -80,10 +80,11 @@ $view->share('flash', $session->getAllFlash());
 $router = new Router();
 
 // Set base path for subdirectory installation (e.g., /raime-upload)
-// Auto-detect from script path
+// Auto-detect from script path, but ignore /public since it's an internal rewrite
 $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
 $basePath = rtrim(dirname($scriptName), '/');
-if ($basePath !== '' && $basePath !== '/') {
+// Don't set basePath if it's just '/public' (internal rewrite) or empty/root
+if ($basePath !== '' && $basePath !== '/' && $basePath !== '/public') {
     $router->setBasePath($basePath);
 }
 
