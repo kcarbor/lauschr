@@ -29,7 +29,7 @@
             <div class="card feed-card">
                 <div class="feed-card-header">
                     <?php if (!empty($feed['image'])): ?>
-                        <img src="<?= $view->e($feed['image']) ?>" alt="" class="feed-image">
+                        <img src="<?= $view->url(ltrim($feed['image'], '/')) ?>" alt="" class="feed-image">
                     <?php else: ?>
                         <div class="feed-image-placeholder">🎙️</div>
                     <?php endif; ?>

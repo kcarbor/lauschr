@@ -34,7 +34,7 @@ $userPermissions = $permission->getPermissions($feed, $currentUser['id']);
     <div class="card-body">
         <div class="d-flex gap-4">
             <?php if (!empty($feed['image'])): ?>
-                <img src="<?= $view->e($feed['image']) ?>" alt="" class="feed-image" style="width: 120px; height: 120px;">
+                <img src="<?= $view->url(ltrim($feed['image'], '/')) ?>" alt="" class="feed-image" style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px;">
             <?php else: ?>
                 <div class="feed-image-placeholder" style="width: 120px; height: 120px; font-size: 3rem;">🎙️</div>
             <?php endif; ?>

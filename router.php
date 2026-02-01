@@ -7,7 +7,14 @@
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $publicPath = __DIR__ . '/public';
+$dataPath = __DIR__;
 $requestedFile = $publicPath . $uri;
+
+// Check if file is in /data/ directory (images, audio files)
+$isDataFile = str_starts_with($uri, '/data/');
+if ($isDataFile) {
+    $requestedFile = $dataPath . $uri;
+}
 
 // Serve static files directly if they exist
 if ($uri !== '/' && file_exists($requestedFile) && is_file($requestedFile)) {

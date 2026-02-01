@@ -8,7 +8,10 @@
 declare(strict_types=1);
 
 // Define root path
-define('LAUSCHR_ROOT', dirname(__DIR__));
+// Use __DIR__ when index.php is in the same folder as src/, config/, etc. (production)
+// Use dirname(__DIR__) when index.php is in a public/ subfolder (development)
+// Auto-detect: if src/ exists in current dir, use __DIR__, otherwise use parent
+define('LAUSCHR_ROOT', is_dir(__DIR__ . '/src') ? __DIR__ : dirname(__DIR__));
 
 // Composer autoload (if using composer) or manual autoloading
 spl_autoload_register(function ($class) {
@@ -75,6 +78,14 @@ $view->share('flash', $session->getAllFlash());
 
 // Create router
 $router = new Router();
+
+// Set base path for subdirectory installation (e.g., /raime-upload)
+// Auto-detect from script path
+$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+$basePath = rtrim(dirname($scriptName), '/');
+if ($basePath !== '' && $basePath !== '/') {
+    $router->setBasePath($basePath);
+}
 
 // Middleware: Require authentication
 $requireAuth = function () use ($session, $router) {
@@ -145,19 +156,24 @@ $router->post('/login', function () use ($view, $csrf, $session, $userModel) {
     }
 
     // Attempt authentication
-    $user = $userModel->authenticate($email, $password);
+    $result = $userModel->authenticate($email, $password);
 
-    if (!$user) {
+    if (is_string($result)) {
+        $errorMessages = [
+            'invalid_credentials' => 'E-Mail oder Passwort ist falsch.',
+            'pending' => 'Ihr Konto wartet noch auf Freigabe durch einen Administrator.',
+            'rejected' => 'Ihr Konto wurde abgelehnt. Bitte kontaktieren Sie den Administrator.',
+        ];
         return $view->render('auth/login', [
             'title' => 'Anmelden',
-            'errors' => ['E-Mail oder Passwort ist falsch.'],
+            'errors' => [$errorMessages[$result] ?? 'Anmeldung fehlgeschlagen.'],
             'old' => ['email' => $email],
         ]);
     }
 
     // Log in
-    $session->setUser($user['id']);
-    $session->flash('success', 'Willkommen zurück, ' . $user['name'] . '!');
+    $session->setUser($result['id']);
+    $session->flash('success', 'Willkommen zurück, ' . $result['name'] . '!');
 
     Router::redirect('/dashboard');
 }, [$requireGuest]);
@@ -232,12 +248,23 @@ $router->post('/register', function () use ($view, $csrf, $session, $userModel, 
         'password' => $pw,
     ]);
 
-    // Log in
-    $session->setUser($user['id']);
-    $session->flash('success', 'Willkommen bei LauschR, ' . $user['name'] . '!');
+    // Check if user is auto-approved (first user = admin)
+    if (($user['status'] ?? 'pending') === 'approved') {
+        $session->setUser($user['id']);
+        $session->flash('success', 'Willkommen bei LauschR, ' . $user['name'] . '!');
+        Router::redirect('/dashboard');
+    }
 
-    Router::redirect('/dashboard');
+    // User needs approval
+    Router::redirect('/pending');
 }, [$requireGuest]);
+
+// Pending approval page
+$router->get('/pending', function () use ($view) {
+    return $view->render('auth/pending', [
+        'title' => 'Registrierung eingegangen',
+    ]);
+});
 
 // Logout
 $router->get('/logout', function () use ($session) {
@@ -245,6 +272,133 @@ $router->get('/logout', function () use ($session) {
     $session->flash('success', 'Sie wurden erfolgreich abgemeldet.');
     Router::redirect('/login');
 });
+
+// =============================================================================
+// ADMIN ROUTES
+// =============================================================================
+
+// Middleware: Require admin or moderator
+$requireModerator = function () use ($session, $userModel) {
+    if (!$session->isAuthenticated()) {
+        Router::redirect('/login');
+        return false;
+    }
+    $userId = $session->getUserId();
+    if (!$userModel->isModerator($userId)) {
+        Router::redirect('/dashboard');
+        return false;
+    }
+    return true;
+};
+
+// Middleware: Require admin only
+$requireAdmin = function () use ($session, $userModel) {
+    if (!$session->isAuthenticated()) {
+        Router::redirect('/login');
+        return false;
+    }
+    $userId = $session->getUserId();
+    if (!$userModel->isAdmin($userId)) {
+        Router::redirect('/dashboard');
+        return false;
+    }
+    return true;
+};
+
+// Admin: User management
+$router->get('/admin/users', function () use ($view, $userModel) {
+    $pending = $userModel->getByStatus('pending');
+    $approved = $userModel->getByStatus('approved');
+    $rejected = $userModel->getByStatus('rejected');
+
+    return $view->render('admin/users', [
+        'title' => 'Benutzerverwaltung',
+        'pending' => $pending,
+        'approved' => $approved,
+        'rejected' => $rejected,
+    ]);
+}, [$requireModerator]);
+
+// Admin: Approve user
+$router->post('/admin/users/{id}/approve', function ($id) use ($userModel, $session, $csrf) {
+    if (!$csrf->validateRequest()) {
+        $session->flash('error', 'Ungültige Anfrage.');
+        Router::redirect('/admin/users');
+        return;
+    }
+
+    if ($userModel->approve($id)) {
+        $user = $userModel->find($id);
+        $session->flash('success', 'Benutzer "' . ($user['name'] ?? $id) . '" wurde freigeschaltet.');
+    } else {
+        $session->flash('error', 'Benutzer konnte nicht freigeschaltet werden.');
+    }
+
+    Router::redirect('/admin/users');
+}, [$requireModerator]);
+
+// Admin: Reject user
+$router->post('/admin/users/{id}/reject', function ($id) use ($userModel, $session, $csrf) {
+    if (!$csrf->validateRequest()) {
+        $session->flash('error', 'Ungültige Anfrage.');
+        Router::redirect('/admin/users');
+        return;
+    }
+
+    if ($userModel->reject($id)) {
+        $user = $userModel->find($id);
+        $session->flash('success', 'Benutzer "' . ($user['name'] ?? $id) . '" wurde abgelehnt.');
+    } else {
+        $session->flash('error', 'Benutzer konnte nicht abgelehnt werden.');
+    }
+
+    Router::redirect('/admin/users');
+}, [$requireModerator]);
+
+// Admin: Set user role (admin only)
+$router->post('/admin/users/{id}/role', function ($id) use ($userModel, $session, $csrf) {
+    if (!$csrf->validateRequest()) {
+        $session->flash('error', 'Ungültige Anfrage.');
+        Router::redirect('/admin/users');
+        return;
+    }
+
+    $role = Router::input('role', 'user');
+    if ($userModel->setRole($id, $role)) {
+        $user = $userModel->find($id);
+        $roleNames = ['admin' => 'Administrator', 'moderator' => 'Moderator', 'user' => 'Benutzer'];
+        $session->flash('success', 'Rolle von "' . ($user['name'] ?? $id) . '" wurde zu "' . ($roleNames[$role] ?? $role) . '" geändert.');
+    } else {
+        $session->flash('error', 'Rolle konnte nicht geändert werden.');
+    }
+
+    Router::redirect('/admin/users');
+}, [$requireAdmin]);
+
+// Admin: Delete user (admin only)
+$router->post('/admin/users/{id}/delete', function ($id) use ($userModel, $session, $csrf) {
+    if (!$csrf->validateRequest()) {
+        $session->flash('error', 'Ungültige Anfrage.');
+        Router::redirect('/admin/users');
+        return;
+    }
+
+    // Prevent self-deletion
+    if ($id === $session->getUserId()) {
+        $session->flash('error', 'Sie können sich nicht selbst löschen.');
+        Router::redirect('/admin/users');
+        return;
+    }
+
+    $user = $userModel->find($id);
+    if ($userModel->delete($id)) {
+        $session->flash('success', 'Benutzer "' . ($user['name'] ?? $id) . '" wurde gelöscht.');
+    } else {
+        $session->flash('error', 'Benutzer konnte nicht gelöscht werden.');
+    }
+
+    Router::redirect('/admin/users');
+}, [$requireAdmin]);
 
 // Dashboard
 $router->get('/dashboard', function () use ($view, $feedModel, $currentUser) {
@@ -330,7 +484,7 @@ $router->get('/feeds/{id}/settings', function ($id) use ($view, $feedModel, $per
     ]);
 }, [$requireAuth]);
 
-$router->post('/feeds/{id}/settings', function ($id) use ($view, $csrf, $session, $feedModel, $permission, $currentUser) {
+$router->post('/feeds/{id}/settings', function ($id) use ($view, $csrf, $session, $feedModel, $permission, $currentUser, $app) {
     $feed = $feedModel->find($id);
 
     if (!$feed || !$permission->canManageSettings($feed, $currentUser['id'])) {
@@ -345,7 +499,79 @@ $router->post('/feeds/{id}/settings', function ($id) use ($view, $csrf, $session
         return;
     }
 
-    $feedModel->update($id, Router::allInput());
+    $updateData = Router::allInput();
+
+    // Handle image removal
+    if (!empty($updateData['remove_image'])) {
+        // Delete old image file if exists
+        if (!empty($feed['image'])) {
+            $oldImagePath = LAUSCHR_ROOT . parse_url($feed['image'], PHP_URL_PATH);
+            if (file_exists($oldImagePath)) {
+                unlink($oldImagePath);
+            }
+        }
+        $updateData['image'] = null;
+    }
+
+    // Handle image upload
+    if (isset($_FILES['cover_image']) && $_FILES['cover_image']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['cover_image'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        $maxSize = 5 * 1024 * 1024; // 5 MB
+
+        // Validate file type
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($file['tmp_name']);
+
+        if (!in_array($mimeType, $allowedTypes)) {
+            $session->flash('error', 'Ungültiges Bildformat. Erlaubt sind: JPG, PNG, WebP.');
+            Router::redirect('/feeds/' . $id . '/settings');
+            return;
+        }
+
+        // Validate file size
+        if ($file['size'] > $maxSize) {
+            $session->flash('error', 'Das Bild ist zu groß. Maximale Größe: 5 MB.');
+            Router::redirect('/feeds/' . $id . '/settings');
+            return;
+        }
+
+        // Create images directory if not exists
+        $imagesDir = LAUSCHR_ROOT . '/data/images';
+        if (!is_dir($imagesDir)) {
+            mkdir($imagesDir, 0755, true);
+        }
+
+        // Generate unique filename
+        $extension = match($mimeType) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'jpg'
+        };
+        $filename = 'cover_' . $id . '_' . time() . '.' . $extension;
+        $targetPath = $imagesDir . '/' . $filename;
+
+        // Delete old image if exists
+        if (!empty($feed['image'])) {
+            $oldImagePath = LAUSCHR_ROOT . parse_url($feed['image'], PHP_URL_PATH);
+            if (file_exists($oldImagePath)) {
+                unlink($oldImagePath);
+            }
+        }
+
+        // Move uploaded file
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            // Store relative path - will be resolved by View::asset() or url()
+            $updateData['image'] = '/data/images/' . $filename;
+        } else {
+            $session->flash('error', 'Fehler beim Hochladen des Bildes.');
+            Router::redirect('/feeds/' . $id . '/settings');
+            return;
+        }
+    }
+
+    $feedModel->update($id, $updateData);
     $session->flash('success', 'Einstellungen wurden gespeichert.');
     Router::redirect('/feeds/' . $id . '/settings');
 }, [$requireAuth]);

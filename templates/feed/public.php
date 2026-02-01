@@ -187,7 +187,7 @@
     <div class="container">
         <header class="header">
             <?php if (!empty($feed['image'])): ?>
-                <img src="<?= htmlspecialchars($feed['image']) ?>" alt="" class="cover">
+                <img src="<?= htmlspecialchars($view->url(ltrim($feed['image'], '/'))) ?>" alt="" class="cover">
             <?php else: ?>
                 <div class="cover-placeholder">🎙️</div>
             <?php endif; ?>

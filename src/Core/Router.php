@@ -14,6 +14,7 @@ class Router
     private array $routes = [];
     private array $middleware = [];
     private string $basePath = '';
+    private static string $staticBasePath = '';
 
     /**
      * Set the base path for all routes
@@ -21,6 +22,7 @@ class Router
     public function setBasePath(string $basePath): void
     {
         $this->basePath = rtrim($basePath, '/');
+        self::$staticBasePath = $this->basePath;
     }
 
     /**
@@ -81,8 +83,8 @@ class Router
         $method = $_SERVER['REQUEST_METHOD'];
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-        // Remove trailing slash except for root
-        if ($uri !== '/' && str_ends_with($uri, '/')) {
+        // Remove trailing slash except for root (both / and /basepath/)
+        if ($uri !== '/' && $uri !== $this->basePath . '/' && str_ends_with($uri, '/')) {
             $uri = rtrim($uri, '/');
         }
 
@@ -168,6 +170,10 @@ class Router
      */
     public static function redirect(string $url, int $statusCode = 302): void
     {
+        // Prepend base path for relative URLs
+        if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+            $url = self::$staticBasePath . $url;
+        }
         header('Location: ' . $url, true, $statusCode);
         exit;
     }

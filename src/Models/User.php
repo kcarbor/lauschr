@@ -76,11 +76,16 @@ class User
         $id = $this->generateId();
         $now = date('c');
 
+        // First user becomes admin, others are pending
+        $isFirstUser = $this->count() === 0;
+
         $user = [
             'id' => $id,
             'email' => strtolower(trim($userData['email'])),
             'password_hash' => $this->password->hash($userData['password']),
             'name' => trim($userData['name']),
+            'role' => $isFirstUser ? 'admin' : 'user',
+            'status' => $isFirstUser ? 'approved' : 'pending',
             'created_at' => $now,
             'updated_at' => $now,
             'email_verified' => false,
@@ -113,7 +118,7 @@ class User
             }
 
             // Update allowed fields
-            $allowedFields = ['name', 'email', 'settings', 'email_verified'];
+            $allowedFields = ['name', 'email', 'settings', 'email_verified', 'role', 'status'];
 
             foreach ($allowedFields as $field) {
                 if (array_key_exists($field, $userData)) {
@@ -192,17 +197,30 @@ class User
 
     /**
      * Authenticate user by email and password
+     * Returns user array on success, or error code string on failure:
+     * - 'invalid_credentials': wrong email or password
+     * - 'pending': account awaiting approval
+     * - 'rejected': account was rejected
      */
-    public function authenticate(string $email, string $password): ?array
+    public function authenticate(string $email, string $password): array|string
     {
         $user = $this->findByEmail($email);
 
         if (!$user || !isset($user['password_hash'])) {
-            return null;
+            return 'invalid_credentials';
         }
 
         if (!$this->password->verify($password, $user['password_hash'])) {
-            return null;
+            return 'invalid_credentials';
+        }
+
+        // Check user status
+        $status = $user['status'] ?? 'approved'; // Default approved for legacy users
+        if ($status === 'pending') {
+            return 'pending';
+        }
+        if ($status === 'rejected') {
+            return 'rejected';
         }
 
         // Check if password needs rehashing
@@ -302,6 +320,97 @@ class User
                 if (count($results) >= $limit) {
                     break;
                 }
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin(string $id): bool
+    {
+        $user = $this->find($id);
+        return $user && ($user['role'] ?? 'user') === 'admin';
+    }
+
+    /**
+     * Check if user is moderator or admin
+     */
+    public function isModerator(string $id): bool
+    {
+        $user = $this->find($id);
+        $role = $user['role'] ?? 'user';
+        return $user && in_array($role, ['admin', 'moderator']);
+    }
+
+    /**
+     * Check if user is approved
+     */
+    public function isApproved(string $id): bool
+    {
+        $user = $this->find($id);
+        return $user && ($user['status'] ?? 'pending') === 'approved';
+    }
+
+    /**
+     * Approve a user
+     */
+    public function approve(string $id): bool
+    {
+        return $this->update($id, ['status' => 'approved']) !== null;
+    }
+
+    /**
+     * Reject a user
+     */
+    public function reject(string $id): bool
+    {
+        return $this->update($id, ['status' => 'rejected']) !== null;
+    }
+
+    /**
+     * Set user role
+     */
+    public function setRole(string $id, string $role): bool
+    {
+        if (!in_array($role, ['admin', 'moderator', 'user'])) {
+            return false;
+        }
+        return $this->update($id, ['role' => $role]) !== null;
+    }
+
+    /**
+     * Get all pending users
+     */
+    public function getPending(): array
+    {
+        $data = $this->store->read($this->usersFile, ['users' => []]);
+        $pending = [];
+
+        foreach ($data['users'] as $user) {
+            if (($user['status'] ?? 'pending') === 'pending') {
+                unset($user['password_hash']);
+                $pending[] = $user;
+            }
+        }
+
+        return $pending;
+    }
+
+    /**
+     * Get users by status
+     */
+    public function getByStatus(string $status): array
+    {
+        $data = $this->store->read($this->usersFile, ['users' => []]);
+        $results = [];
+
+        foreach ($data['users'] as $user) {
+            if (($user['status'] ?? 'pending') === $status) {
+                unset($user['password_hash']);
+                $results[] = $user;
             }
         }
 

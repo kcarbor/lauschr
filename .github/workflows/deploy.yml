@@ -1,11 +1,8 @@
-name: Deploy to Manitu (FTPS explicit)
+name: Deploy to Manitu (FTPS)
 
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'public/**'
-      - '.github/workflows/deploy.yml'
   workflow_dispatch: {}
 
 jobs:
@@ -15,26 +12,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # .htaccess & .htpasswd lokal erzeugen (kommen mit hoch)
-      - name: Create .htaccess from secret
-        run: |
-          mkdir -p public
-          cat > public/.htaccess <<'EOF'
-          AuthType Basic
-          AuthName "LauschR Admin Upload"
-          AuthUserFile ${{ secrets.MANITU_HTPASSWD_PATH }}
-          Require valid-user
-          Options -Indexes
-          EOF
-
-      - name: Create .htpasswd from secret
-        run: |
-          printf "%s\n" "${{ secrets.HTPASSWD_LINE }}" > public/.htpasswd
-
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Mirror via FTPS (explicit TLS on 21, keep data/)
+      - name: Deploy via FTPS
         env:
           HOST: ${{ secrets.MANITU_HOST }}
           USER: ${{ secrets.MANITU_USER }}
@@ -43,23 +24,29 @@ jobs:
         run: |
           lftp -u "$USER","$PASS" "ftp://$HOST:21" -e "
             set ftp:passive-mode true;
-            set ftp:use-feat true;
             set ftp:ssl-auth TLS;
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
-            set net:max-retries 2;
-            set net:timeout 25;
-            # Falls Zertifikat zickt -> zum Testen aktivieren (später wieder löschen!):
-            # set ssl:verify-certificate false;
+            set net:max-retries 3;
+            set net:timeout 30;
             mirror -R --only-newer --parallel=2 \
-              --exclude-glob .git* \
+              --exclude-glob .git/ \
+              --exclude-glob .git/** \
+              --exclude-glob .github/ \
               --exclude-glob .github/** \
-              --exclude-glob node_modules/** \
-              --exclude-glob data/** \
-              ./public $REMOTE;
+              --exclude-glob .DS_Store \
+              --exclude-glob test.php \
+              --exclude-glob test2.php \
+              --exclude-glob public/debug.php \
+              --exclude-glob router.php \
+              --exclude-glob data/users.json \
+              --exclude-glob data/feeds/ \
+              --exclude-glob data/feeds/** \
+              --exclude-glob data/audio/ \
+              --exclude-glob data/audio/** \
+              --exclude-glob data/images/*.jpg \
+              --exclude-glob data/images/*.png \
+              --exclude-glob data/images/*.webp \
+              . $REMOTE;
             bye
           "
-      - name: Debug list local files
-        run: |
-          echo "Local files in ./public:"
-          find public -type f

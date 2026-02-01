@@ -110,6 +110,7 @@
                         <label for="role" class="form-label form-label-required">Rolle</label>
                         <select id="role" name="role" class="form-select" required>
                             <option value="editor">Bearbeiter - Kann Episoden erstellen, bearbeiten und löschen</option>
+                            <option value="contributor">Mitwirkender - Kann nur neue Episoden hinzufügen</option>
                             <option value="viewer">Betrachter - Kann nur Episoden ansehen</option>
                         </select>
                     </div>
@@ -127,6 +128,7 @@
                         <tr style="text-align: left; border-bottom: 1px solid var(--color-gray-200);">
                             <th style="padding: 0.5rem 0;">Berechtigung</th>
                             <th style="padding: 0.5rem; text-align: center;">Bearbeiter</th>
+                            <th style="padding: 0.5rem; text-align: center;">Mitwirkender</th>
                             <th style="padding: 0.5rem; text-align: center;">Betrachter</th>
                         </tr>
                     </thead>
@@ -135,9 +137,11 @@
                             <td style="padding: 0.5rem 0;">Episoden ansehen</td>
                             <td style="text-align: center;">✅</td>
                             <td style="text-align: center;">✅</td>
+                            <td style="text-align: center;">✅</td>
                         </tr>
                         <tr>
                             <td style="padding: 0.5rem 0;">Episoden hochladen</td>
+                            <td style="text-align: center;">✅</td>
                             <td style="text-align: center;">✅</td>
                             <td style="text-align: center;">❌</td>
                         </tr>
@@ -145,19 +149,23 @@
                             <td style="padding: 0.5rem 0;">Episoden bearbeiten</td>
                             <td style="text-align: center;">✅</td>
                             <td style="text-align: center;">❌</td>
+                            <td style="text-align: center;">❌</td>
                         </tr>
                         <tr>
                             <td style="padding: 0.5rem 0;">Episoden löschen</td>
                             <td style="text-align: center;">✅</td>
+                            <td style="text-align: center;">❌</td>
                             <td style="text-align: center;">❌</td>
                         </tr>
                         <tr>
                             <td style="padding: 0.5rem 0;">Feed-Einstellungen</td>
                             <td style="text-align: center;">❌</td>
                             <td style="text-align: center;">❌</td>
+                            <td style="text-align: center;">❌</td>
                         </tr>
                         <tr>
                             <td style="padding: 0.5rem 0;">Mitarbeiter einladen</td>
+                            <td style="text-align: center;">❌</td>
                             <td style="text-align: center;">❌</td>
                             <td style="text-align: center;">❌</td>
                         </tr>

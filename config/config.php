@@ -13,11 +13,18 @@ if (!defined('LAUSCHR_ROOT')) {
     die('Direct access not permitted');
 }
 
+// Auto-detect URL for local development
+$defaultUrl = 'https://lauschr.io';
+if (PHP_SAPI === 'cli-server' || (isset($_SERVER['HTTP_HOST']) && str_contains($_SERVER['HTTP_HOST'], 'localhost'))) {
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $defaultUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost:8000');
+}
+
 return [
     // Application settings
     'app' => [
         'name' => 'LauschR',
-        'url' => getenv('APP_URL') ?: 'http://localhost:8000',
+        'url' => getenv('APP_URL') ?: $defaultUrl,
         'debug' => (bool)(getenv('APP_DEBUG') ?: false),
         'timezone' => 'Europe/Berlin',
         'language' => 'de',
@@ -38,7 +45,8 @@ return [
     'session' => [
         'name' => 'lauschr_session',
         'lifetime' => 86400, // 24 hours
-        'secure' => (bool)(getenv('SESSION_SECURE') ?: false), // Set true in production with HTTPS
+        // Auto-detect: secure cookies for HTTPS, non-secure for localhost development
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'httponly' => true,
         'samesite' => 'Strict',
     ],
@@ -82,6 +90,15 @@ return [
             'can_upload' => true,
             'can_edit' => true,
             'can_delete' => true,
+            'can_invite' => false,
+            'can_manage_settings' => false,
+            'can_delete_feed' => false,
+        ],
+        'contributor' => [
+            'level' => 30,
+            'can_upload' => true,
+            'can_edit' => false,
+            'can_delete' => false,
             'can_invite' => false,
             'can_manage_settings' => false,
             'can_delete_feed' => false,

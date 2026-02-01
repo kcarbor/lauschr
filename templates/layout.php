@@ -19,6 +19,9 @@
                 <?php if (isset($currentUser)): ?>
                     <a href="<?= $view->url('/dashboard') ?>" class="nav-link">Dashboard</a>
                     <a href="<?= $view->url('/feeds/create') ?>" class="nav-link">Neuer Feed</a>
+                    <?php if (in_array($currentUser['role'] ?? 'user', ['admin', 'moderator'])): ?>
+                        <a href="<?= $view->url('/admin/users') ?>" class="nav-link">Benutzer</a>
+                    <?php endif; ?>
                     <div class="nav-user">
                         <span class="nav-user-name"><?= $view->e($currentUser['name']) ?></span>
                         <a href="<?= $view->url('/logout') ?>" class="nav-link nav-link-secondary">Abmelden</a>

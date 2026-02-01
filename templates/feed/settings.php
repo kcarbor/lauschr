@@ -26,6 +26,40 @@
             <?= $csrf->field() ?>
 
             <div class="form-group">
+                <label class="form-label">Feed-Cover</label>
+                <div class="d-flex gap-4" style="align-items: flex-start;">
+                    <div class="feed-cover-preview" style="flex-shrink: 0;">
+                        <?php if (!empty($feed['image'])): ?>
+                            <img src="<?= $view->url(ltrim($feed['image'], '/')) ?>" alt="Feed Cover" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid var(--color-gray-200);">
+                        <?php else: ?>
+                            <div style="width: 150px; height: 150px; background: var(--color-gray-100); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 3rem; border: 1px solid var(--color-gray-200);">
+                                🎙️
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div style="flex: 1;">
+                        <input
+                            type="file"
+                            id="cover_image"
+                            name="cover_image"
+                            class="form-input"
+                            accept="image/jpeg,image/png,image/webp"
+                        >
+                        <p class="form-hint">
+                            Empfohlen: Quadratisches Bild, min. 1400x1400 Pixel.<br>
+                            Erlaubte Formate: JPG, PNG, WebP. Max. 5 MB.
+                        </p>
+                        <?php if (!empty($feed['image'])): ?>
+                            <label class="form-checkbox" style="margin-top: 0.5rem;">
+                                <input type="checkbox" name="remove_image" value="1">
+                                <span>Aktuelles Bild entfernen</span>
+                            </label>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
                 <label for="title" class="form-label form-label-required">Titel</label>
                 <input
                     type="text"

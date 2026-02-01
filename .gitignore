@@ -1,5 +1,16 @@
 # Data directory (user data, audio files)
-data/
+# Keep directory structure but ignore contents
+data/*
+!data/.gitkeep
+!data/images/
+!data/feeds/
+!data/audio/
+data/images/*
+data/feeds/*
+data/audio/*
+!data/images/.gitkeep
+!data/feeds/.gitkeep
+!data/audio/.gitkeep
 public/data/
 
 # Auth files

@@ -15,6 +15,7 @@ class Permission
 {
     public const OWNER = 'owner';
     public const EDITOR = 'editor';
+    public const CONTRIBUTOR = 'contributor';
     public const VIEWER = 'viewer';
 
     private array $permissionConfig;
@@ -29,7 +30,7 @@ class Permission
      */
     public static function roles(): array
     {
-        return [self::OWNER, self::EDITOR, self::VIEWER];
+        return [self::OWNER, self::EDITOR, self::CONTRIBUTOR, self::VIEWER];
     }
 
     /**
@@ -187,6 +188,7 @@ class Permission
         return match ($role) {
             self::OWNER => 'Besitzer',
             self::EDITOR => 'Bearbeiter',
+            self::CONTRIBUTOR => 'Mitwirkender',
             self::VIEWER => 'Betrachter',
             default => 'Unbekannt',
         };
@@ -200,6 +202,7 @@ class Permission
         return match ($role) {
             self::OWNER => 'Volle Kontrolle über den Feed einschließlich Einstellungen und Einladungen',
             self::EDITOR => 'Kann Episoden hinzufügen, bearbeiten und löschen',
+            self::CONTRIBUTOR => 'Kann nur neue Episoden hinzufügen',
             self::VIEWER => 'Kann Episoden und Feed-Details ansehen',
             default => '',
         };
