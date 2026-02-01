@@ -540,7 +540,18 @@ $router->post('/feeds/{id}/settings', function ($id) use ($view, $csrf, $session
         // Create images directory if not exists
         $imagesDir = LAUSCHR_ROOT . '/data/images';
         if (!is_dir($imagesDir)) {
-            mkdir($imagesDir, 0755, true);
+            if (!mkdir($imagesDir, 0775, true)) {
+                $session->flash('error', 'Konnte Bildverzeichnis nicht erstellen.');
+                Router::redirect('/feeds/' . $id . '/settings');
+                return;
+            }
+        }
+
+        // Check if directory is writable
+        if (!is_writable($imagesDir)) {
+            $session->flash('error', 'Bildverzeichnis ist nicht beschreibbar. Bitte Berechtigungen prüfen.');
+            Router::redirect('/feeds/' . $id . '/settings');
+            return;
         }
 
         // Generate unique filename
@@ -557,7 +568,7 @@ $router->post('/feeds/{id}/settings', function ($id) use ($view, $csrf, $session
         if (!empty($feed['image'])) {
             $oldImagePath = LAUSCHR_ROOT . parse_url($feed['image'], PHP_URL_PATH);
             if (file_exists($oldImagePath)) {
-                unlink($oldImagePath);
+                @unlink($oldImagePath);
             }
         }
 
@@ -566,7 +577,7 @@ $router->post('/feeds/{id}/settings', function ($id) use ($view, $csrf, $session
             // Store relative path - will be resolved by View::asset() or url()
             $updateData['image'] = '/data/images/' . $filename;
         } else {
-            $session->flash('error', 'Fehler beim Hochladen des Bildes.');
+            $session->flash('error', 'Fehler beim Hochladen des Bildes. Temp: ' . $file['tmp_name'] . ' Target: ' . $targetPath);
             Router::redirect('/feeds/' . $id . '/settings');
             return;
         }
